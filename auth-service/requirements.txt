@@ -1,0 +1,10 @@
+flask
+flask_sqlalchemy
+werkzeug
+pyjwt
+flask_mail
+pyotp
+authlib
+requests
+python-dotenv
+pymysql

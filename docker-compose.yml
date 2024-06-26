@@ -1,0 +1,117 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: auth_service_db
+      MYSQL_USER: fylinde
+      MYSQL_PASSWORD: Sylvian
+    volumes:
+      - ./my.cnf:/etc/mysql/conf.d/my.cnf  # Mount the custom configuration file
+    networks:
+      - ecommerce-network
+    ports:
+      - "3307:3307"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./auth-service
+    env_file:
+      - ./auth-service/.env
+    networks:
+      - ecommerce-network
+    ports:
+      - "5004:5000"
+
+  chatbot-service:
+    build:
+      context: ./ai-services/chatbots
+    networks:
+      - ecommerce-network
+    ports:
+      - "5003:5000"
+
+  customer-service:
+    build:
+      context: ./customer-service
+    networks:
+      - ecommerce-network
+    ports:
+      - "5006:5000"
+
+  fraud-detection-service:
+    build:
+      context: ./ai-services/fraud-detection
+    networks:
+      - ecommerce-network
+    ports:
+      - "5002:5000"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: ["start-dev"]
+    networks:
+      - ecommerce-network
+    ports:
+      - "8080:8080"
+
+  notification-service:
+    build:
+      context: ./notification-service
+    networks:
+      - ecommerce-network
+    ports:
+      - "5010:5000"
+
+  order-service:
+    build:
+      context: ./order-service
+    networks:
+      - ecommerce-network
+    ports:
+      - "5007:5000"
+
+  payment-service:
+    build:
+      context: ./payment-service
+    networks:
+      - ecommerce-network
+    ports:
+      - "5008:5000"
+
+  product-service:
+    build:
+      context: ./product-service
+    networks:
+      - ecommerce-network
+    ports:
+      - "5009:5000"
+
+  recommendation-service:
+    build:
+      context: ./ai-services/recommendation
+    networks:
+      - ecommerce-network
+    ports:
+      - "5011:5000"
+
+  vendor-service:
+    build:
+      context: ./vendor-service
+    networks:
+      - ecommerce-network
+    ports:
+      - "5005:5000"
+
+networks:
+  ecommerce-network:
+    driver: bridge
