@@ -22,10 +22,19 @@ services:
   auth-service:
     build:
       context: ./auth-service
-    env_file:
-      - ./auth-service/.env
+    environment:
+      - FLASK_APP=app.main
+      - FLASK_ENV=development
+      - SQLALCHEMY_DATABASE_URI=mysql+pymysql://fylinde:Sylvian@db:3307/auth_service_db
+      - OIDC_CLIENT_ID=auth-service
+      - OIDC_CLIENT_SECRET=BtLWa5CI3neQDhentMZFnzOmETKjdXOS
+      - OIDC_DISCOVERY_URL=http://localhost:8080/realms/fylinde_ecommerce/.well-known/openid-configuration
+    volumes:
+      - ./auth-service:/app
     networks:
       - ecommerce-network
+    depends_on:
+      - db
     ports:
       - "5004:5000"
 
