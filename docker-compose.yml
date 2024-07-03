@@ -1,5 +1,12 @@
 version: '3.8'
+
+networks:
+  ecommerce-network:
+    name: fylinde_ecommerce-network
+    driver: bridge
+
 services:
+
   db:
     image: mysql:latest
     environment:
@@ -9,10 +16,11 @@ services:
       MYSQL_PASSWORD: Sylvian
     volumes:
       - ./my.cnf:/etc/mysql/conf.d/my.cnf  # Mount the custom configuration file
+      - mysql_auth_service_data:/var/lib/mysql  # Correct path for MySQL data directory
     networks:
       - ecommerce-network
     ports:
-      - "3307:3307"
+      - "3307:3307"  # Map host port 3307 to container port 3306
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -22,15 +30,16 @@ services:
   auth-service:
     build:
       context: ./auth-service
+      dockerfile: Dockerfile
     environment:
       - FLASK_APP=app.main
       - FLASK_ENV=development
       - SQLALCHEMY_DATABASE_URI=mysql+pymysql://fylinde:Sylvian@db:3307/auth_service_db
       - OIDC_CLIENT_ID=auth-service
-      - OIDC_CLIENT_SECRET=BtLWa5CI3neQDhentMZFnzOmETKjdXOS
+      - OIDC_CLIENT_SECRET=G7591pgXLIA7EJyiHx0dqipaPNp7EcCW
       - OIDC_DISCOVERY_URL=http://localhost:8080/realms/fylinde_ecommerce/.well-known/openid-configuration
     volumes:
-      - ./auth-service:/app
+      - auth_service_data:/app
     networks:
       - ecommerce-network
     depends_on:
@@ -72,6 +81,8 @@ services:
       - ecommerce-network
     ports:
       - "8080:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
 
   notification-service:
     build:
@@ -121,6 +132,7 @@ services:
     ports:
       - "5005:5000"
 
-networks:
-  ecommerce-network:
-    driver: bridge
+volumes:
+  keycloak_data:
+  auth_service_data:
+  mysql_auth_service_data:

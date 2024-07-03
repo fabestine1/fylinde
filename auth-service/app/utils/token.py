@@ -1,22 +1,18 @@
-# app/utils/token.py
+# app/utils/oidc.py
 
-import jwt
-import datetime
+from authlib.integrations.flask_client import OAuth
 from flask import current_app
 
-def generate_token(user):
-    payload = {
-        'user_id': user.id,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1)
-    }
-    token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
-    return token
+oauth = OAuth()
 
-def verify_token(token):
-    try:
-        payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-        return payload['user_id']
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
+def configure_oauth(app):
+    oauth.init_app(app)
+    oauth.register(
+        name='keycloak',
+        client_id=current_app.config['OIDC_CLIENT_ID'],
+        client_secret=current_app.config['OIDC_CLIENT_SECRET'],
+        server_metadata_url=current_app.config['OIDC_DISCOVERY_URL'],
+        client_kwargs={
+            'scope': 'openid profile email'
+        }
+    )

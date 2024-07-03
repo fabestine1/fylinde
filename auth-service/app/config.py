@@ -10,5 +10,5 @@ class Config:
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MFA_SECRET = os.environ.get('MFA_SECRET', '7wjkQT6NVz4a0IoycB1U-1iIwsV7aIbq6GZRHUXu39w=')
     OIDC_CLIENT_ID = os.environ.get('OIDC_CLIENT_ID', 'auth-service')
-    OIDC_CLIENT_SECRET = os.environ.get('OIDC_CLIENT_SECRET', 'BtLWa5CI3neQDhentMZFnzOmETKjdXOS')
-    OIDC_DISCOVERY_URL = os.environ.get('OIDC_DISCOVERY_URL', 'https://your-keycloak-url/auth/realms/your-realm/.well-known/openid-configuration')
+    OIDC_CLIENT_SECRET = os.environ.get('OIDC_CLIENT_SECRET', 'G7591pgXLIA7EJyiHx0dqipaPNp7EcCW')
+    OIDC_DISCOVERY_URL = os.environ.get('OIDC_DISCOVERY_URL', 'http://keycloak:8080/realms/fylinde_ecommerce/.well-known/openid-configuration')
