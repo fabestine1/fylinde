@@ -37,7 +37,8 @@ services:
       - SQLALCHEMY_DATABASE_URI=mysql+pymysql://fylinde:Sylvian@db:3307/auth_service_db
       - OIDC_CLIENT_ID=auth-service
       - OIDC_CLIENT_SECRET=G7591pgXLIA7EJyiHx0dqipaPNp7EcCW
-      - OIDC_DISCOVERY_URL=http://localhost:8080/realms/fylinde_ecommerce/.well-known/openid-configuration
+      - OIDC_DISCOVERY_URL=http://keycloak:8080/realms/fylinde_ecommerce/.well-known/openid-configuration
+
     volumes:
       - auth_service_data:/app
     networks:
