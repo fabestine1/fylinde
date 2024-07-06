@@ -48,6 +48,9 @@ if [ ! -d "migrations" ]; then
   flask db init
 fi
 
+# Start the Flask application
+flask run --host=0.0.0.0 --port=5004
+
 # Run database migrations
 echo "Running database migrations..."
 flask db migrate -m "Initial migration."

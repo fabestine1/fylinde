@@ -7,19 +7,8 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-# Dockerfile snippet
-COPY ./start.sh /app/start.sh
-RUN cat /app/start.sh  # Add this line to print the script content
-
-# Add this line to print the directory contents during the build process
-RUN ls -l /app
-
-
 # Install curl for connectivity checks
 RUN apt-get update && apt-get install -y curl
-
-# Install required packages
-#RUN apt-get update && apt-get install -y iputils-ping
 
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
@@ -36,9 +25,12 @@ RUN chmod +x /app/entrypoint.sh
 # Ensure entrypoint.sh is executable and check if it exists
 RUN chmod +x /app/entrypoint.sh && ls -l /app/entrypoint.sh
 
+# Make port 5004 available to the world outside this container
+EXPOSE 5004
 
 # Set the FLASK_APP environment variable
-ENV FLASK_APP=/app/main.py
+ENV FLASK_APP=/app/app/main.py
+ENV FLASK_ENV=development
 
 # Run start.sh as the CMD
 CMD ["./start.sh"]

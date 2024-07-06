@@ -1,39 +1,29 @@
+# auth-service/app/__init__.py
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from authlib.integrations.flask_client import OAuth
 import logging
-
-
-db = SQLAlchemy()
-oauth = OAuth()
-migrate = Migrate()  # Initialize the Migrate object
-
+from .config import Config
+from .extensions import db, oauth, migrate, limiter
+from .routes.auth import auth_bp
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object('app.config.Config')
-
+    app.config.from_object(Config)
 
     # Set up logging
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
-
 
     # Log the configuration values to ensure they are loaded correctly
     logger.debug(f"OIDC_CLIENT_ID: {app.config['OIDC_CLIENT_ID']}")
     logger.debug(f"OIDC_CLIENT_SECRET: {app.config['OIDC_CLIENT_SECRET']}")
     logger.debug(f"OIDC_DISCOVERY_URL: {app.config['OIDC_DISCOVERY_URL']}")
 
-
+    # Initialize extensions
     db.init_app(app)
     oauth.init_app(app)
     migrate.init_app(app, db)
-   
-    limiter = Limiter(app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
-
+    limiter.init_app(app)
 
     oauth.register(
         name='keycloak',
@@ -45,13 +35,15 @@ def create_app():
         }
     )
 
-
     with app.app_context():
-        from .models import user
-        from .routes import auth_bp
+        from .models.user import User  # Ensure User is imported from the correct location
         db.create_all()
-        
-        app.register_blueprint(auth_bp, url_prefix='/auth')
 
+        app.register_blueprint(auth_bp, url_prefix='/auth')
+        logger.debug("Blueprint auth_bp registered with url_prefix '/auth'")
+
+        # Log all routes
+        for rule in app.url_map.iter_rules():
+            logger.debug(f"Endpoint: {rule.endpoint}, URL: {rule}")
 
     return app
