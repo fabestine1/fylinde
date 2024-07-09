@@ -55,3 +55,15 @@ def refresh_token(token):
         return None
     except jwt.InvalidTokenError:
         return None
+
+def send_reset_email(user):
+    # Placeholder for sending reset email
+    pass
+
+def verify_reset_token(token):
+    # Placeholder for verifying reset token
+    return None
+
+def verify_mfa_token(secret, token):
+    totp = pyotp.TOTP(secret)
+    return totp.verify(token)

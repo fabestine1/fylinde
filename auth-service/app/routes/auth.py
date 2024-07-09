@@ -1,6 +1,7 @@
 # auth-service/app/routes/auth.py
 
-from flask import Blueprint, jsonify, request, redirect, url_for, session, Response
+from flask import Blueprint, jsonify, request, session
+import requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..extensions import db, oauth
 from ..models.user import User
@@ -8,34 +9,72 @@ import logging
 import jwt
 import pyotp
 from jwt import PyJWKClient
+import datetime
+from functools import wraps
 from ..utils.decorators import login_required, role_required
-from ..utils.token import send_reset_email, verify_reset_token, create_token, verify_mfa_token, refresh_token
-from ..utils.oidc import verify_user
+from ..utils.token import create_token, refresh_token, send_reset_email, verify_reset_token, verify_mfa_token
+from ..utils.oidc import  verify_token
 
 auth_bp = Blueprint('auth_bp', __name__)
 
 logger = logging.getLogger(__name__)
 
-# Define your routes here...
+# Secret key for JWT encoding/decoding
+SECRET_KEY = 'DbSLoIREJtu6z3CVnpTd_DdFeMMRoteCU0UjJcNreZI='
+
+# Keycloak settings
+KEYCLOAK_URL = 'http://keycloak:8080'
+REALM_NAME = 'fylinde_ecommerce'
+CLIENT_ID = 'auth-service'
+CLIENT_SECRET = 'G7591pgXLIA7EJyiHx0dqipaPNp7EcCW'
+REDIRECT_URI = 'http://localhost:5004/authorize'
+
 
 @auth_bp.route('/')
 def home():
     logger.debug("Home route accessed")
     return jsonify(message="Auth Service Home in routes auth")
 
+# Function to create JWT token
+def create_token(user):
+    token = jwt.encode({
+        'user_id': user.id,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    }, SECRET_KEY, algorithm='HS256')
+    return token
+
+# Decorator to verify JWT token
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Token is missing!'}), 403
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            current_user = User.query.filter_by(id=data['user_id']).first()
+        except:
+            return jsonify({'error': 'Token is invalid!'}), 403
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+
 @auth_bp.route('/login', methods=['POST'])
 def login():
     logger.debug("Login route accessed")
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Missing credentials!'}), 400
+
+    username = data['username']
+    password = data['password']
 
     user = User.query.filter_by(username=username).first()
     if user and check_password_hash(user.password_hash, password):
         token = create_token(user)
-        return jsonify({"token": token}), 200
+        return jsonify({'token': token}), 200
     else:
-        return jsonify({"error": "Invalid credentials"}), 401
+        return jsonify({'error': 'Invalid credentials!'}), 401
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -62,11 +101,54 @@ def register():
     logger.debug("User registered successfully")
     return jsonify({"message": "User registered successfully"}), 201
 
-@auth_bp.route('/protected')
-@login_required
-def protected_route():
+@auth_bp.route('/authorize', methods=['GET'])
+def authorize():
+    logger.debug("Authorize route accessed")
+    code = request.args.get('code')
+    if not code:
+        return jsonify({"error": "Authorization code is missing!"}), 400
+
+    token_url = f"{KEYCLOAK_URL}/realms/{REALM_NAME}/protocol/openid-connect/token"
+    data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': REDIRECT_URI,
+        'client_id': CLIENT_ID,
+        'client_secret': CLIENT_SECRET
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    token_response = requests.post(token_url, data=data, headers=headers)
+
+    if token_response.status_code != 200:
+        return jsonify({"error": "Failed to get tokens from Keycloak"}), token_response.status_code
+
+    tokens = token_response.json()
+    id_token = tokens.get('id_token')
+
+    # Decode the ID token
+    payload = jwt.decode(id_token, options={"verify_signature": False})
+    user_info = {
+        "username": payload['preferred_username'],
+        "email": payload['email']
+    }
+
+    # Here, you can create the user in your database if it doesn't exist
+    user = User.query.filter_by(username=user_info["username"]).first()
+    if not user:
+        user = User(username=user_info["username"], email=user_info["email"], password_hash="")
+        db.session.add(user)
+        db.session.commit()
+
+    # Create a session token for the user
+    session_token = create_token(user)
+
+    return jsonify({"user": user_info, "session_token": session_token}), 200
+
+@auth_bp.route('/protected', methods=['GET'])
+@token_required
+def protected_route(current_user):
     logger.debug("Protected route accessed")
-    return jsonify({"message": "Access granted"}), 200
+    return jsonify({"message": f"Access granted, {current_user.username}!"}), 200
 
 @auth_bp.route('/admin')
 @login_required
